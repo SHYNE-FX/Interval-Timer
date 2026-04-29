@@ -58,7 +58,24 @@
 
   /* ───── SCREEN ROUTING ───── */
   .screen { display: none; flex-direction: column; min-height: 100dvh; }
-  .screen.active { display: flex; }
+  .screen.active {
+    display: flex;
+    animation: screenIn 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  .screen.screen-exit {
+    display: flex;
+    animation: screenOut 0.2s cubic-bezier(0.4, 0, 1, 1) both;
+    pointer-events: none;
+  }
+
+  @keyframes screenIn {
+    from { opacity: 0; transform: translateY(14px) scale(0.985); }
+    to   { opacity: 1; transform: translateY(0)    scale(1); }
+  }
+  @keyframes screenOut {
+    from { opacity: 1; transform: translateY(0)     scale(1); }
+    to   { opacity: 0; transform: translateY(-10px) scale(0.99); }
+  }
 
   /* ───── TOPBAR ───── */
   .topbar {
@@ -325,19 +342,19 @@
     color: var(--text);
   }
   .duration-dot { width: 8px; height: 8px; border-radius: 50%; }
-  .duration-stepper { display: flex; align-items: center; gap: 0; }
+  .duration-stepper { display: flex; align-items: center; gap: 18px; }
   .step-btn {
-    background: var(--bg3); border: 1px solid var(--border);
-    color: var(--text); width: 34px; height: 34px;
+    background: #b22222; border: 1px solid #8a1a1a;
+    color: #ffffff; width: 34px; height: 34px;
     display: flex; align-items: center; justify-content: center;
     cursor: pointer; font-size: 18px; font-weight: 700;
     transition: background 0.1s;
     flex-shrink: 0;
     font-family: 'Comfortaa', cursive;
   }
-  .step-btn:first-child { border-radius: 6px 0 0 6px; }
-  .step-btn:last-child  { border-radius: 0 6px 6px 0; }
-  .step-btn:hover { background: var(--border); }
+  .step-btn:first-child { border-radius: 6px; }
+  .step-btn:last-child  { border-radius: 6px; }
+  .step-btn:hover { background: #8a1a1a; }
   .btn-start {
     background: #b22222; color: #ffffff;
     border: 1px solid #8a1a1a;
@@ -366,6 +383,7 @@
   .sets-label-big {
     font-family: 'Comfortaa', cursive;
     font-size: 28px; font-weight: 700;
+    margin-top: 10px;
   }
   .sets-sub { font-size: 13px; color: var(--text2); }
 
@@ -705,6 +723,64 @@
     from { opacity: 0; transform: scale(0.7) translateY(10px); }
     to   { opacity: 1; transform: scale(1) translateY(0); }
   }
+
+  /* ───── PHASE TRANSITION ───── */
+  .phase-flash-in {
+    animation: phaseFlash 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  .badge-flash-in {
+    animation: badgeFlash 0.38s 0.06s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  }
+  @keyframes phaseFlash {
+    from { opacity: 0; transform: translateY(-20px) scale(0.88); }
+    to   { opacity: 1; transform: translateY(0)     scale(1); }
+  }
+  @keyframes badgeFlash {
+    from { opacity: 0; transform: scale(0.55); }
+    to   { opacity: 1; transform: scale(1); }
+  }
+
+  /* ───── TIMER RING ENTER ───── */
+  .ring-enter {
+    animation: ringEnter 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  @keyframes ringEnter {
+    from { opacity: 0.2; transform: scale(0.92); }
+    to   { opacity: 1;   transform: scale(1); }
+  }
+
+  /* ───── PRESET CARD ENTRANCE ───── */
+  @keyframes cardSlideIn {
+    from { opacity: 0; transform: translateY(18px) scale(0.97); }
+    to   { opacity: 1; transform: translateY(0)    scale(1); }
+  }
+  .preset-card {
+    animation: cardSlideIn 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  /* ───── PROGRESS DOTS ───── */
+  .prog-dot {
+    transition: background 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+                transform  0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  /* ───── BUTTON FEEDBACK ───── */
+  .ctrl-btn { transition: background 0.15s, transform 0.12s cubic-bezier(0.34,1.56,0.64,1); }
+  .ctrl-btn:active { transform: scale(0.87) !important; }
+  .icon-btn { transition: all 0.15s, transform 0.12s cubic-bezier(0.34,1.56,0.64,1); }
+  .icon-btn:active { transform: scale(0.87); }
+  .step-btn { transition: background 0.1s, transform 0.1s cubic-bezier(0.34,1.56,0.64,1); }
+  .step-btn:active { transform: scale(0.84); }
+  .num-key { transition: background 0.08s, transform 0.1s cubic-bezier(0.34,1.56,0.64,1); }
+  .num-key:active { transform: scale(0.88); }
+  .fab { transition: transform 0.15s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.15s; }
+  .fab:active { transform: scale(0.9); }
+  .finish-btn { transition: background 0.15s, transform 0.12s cubic-bezier(0.34,1.56,0.64,1); }
+  .finish-btn:active { transform: scale(0.93); }
+
+  /* ───── MODAL ───── */
+  .num-modal { transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1); }
+  .num-modal-overlay { transition: opacity 0.22s cubic-bezier(0.22,1,0.36,1); }
 
   /* ───── SETTINGS SCREEN ───── */
   .settings-section {
@@ -1170,8 +1246,15 @@ function fmt(s) {
   return `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
 }
 function showScreen(id) {
-  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  document.getElementById(id).classList.add('active');
+  const next = document.getElementById(id);
+  const current = document.querySelector('.screen.active');
+  if (current && current !== next) {
+    current.classList.add('screen-exit');
+    setTimeout(() => { current.classList.remove('active', 'screen-exit'); }, 200);
+  } else if (current) {
+    current.classList.remove('active');
+  }
+  setTimeout(() => { next.classList.add('active'); }, current && current !== next ? 80 : 0);
 }
 function showToast(msg, opts) {
   const t = document.getElementById('toast');
@@ -1243,7 +1326,7 @@ function renderDash() {
   const colors = getPhaseColors();
   list.innerHTML = presets.map(p => {
     const total = calcTotal(p), color = colors.WORK;
-    return `<div class="preset-card" data-id="${p.id}" draggable="true">
+    return `<div class="preset-card" data-id="${p.id}" draggable="false">
       <div class="drag-handle" title="Drag to reorder">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="5" r="1.5"/><circle cx="15" cy="5" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="19" r="1.5"/><circle cx="15" cy="19" r="1.5"/></svg>
       </div>
@@ -1261,6 +1344,10 @@ function renderDash() {
     </div>`;
   }).join('');
 
+  /* Stagger card entrance */
+  document.querySelectorAll('#preset-list .preset-card').forEach((card, i) => {
+    card.style.animationDelay = (i * 55) + 'ms';
+  });
   initDragSort();   /* [C] */
   initLongPress();  /* [B] */
 }
@@ -1301,12 +1388,23 @@ let dragSrc = null;
 
 function initDragSort() {
   const list = document.getElementById('preset-list');
-  list.querySelectorAll('.preset-card[draggable]').forEach(card => {
+  list.querySelectorAll('.preset-card').forEach(card => {
+    const handle = card.querySelector('.drag-handle');
+
+    /* Only enable draggable when pointer is on the handle */
+    if (handle) {
+      handle.addEventListener('pointerdown', () => { card.draggable = true; });
+      handle.addEventListener('pointerup',   () => { card.draggable = false; });
+      handle.addEventListener('pointerleave',() => { if (!dragSrc) card.draggable = false; });
+    }
+
     card.addEventListener('dragstart', e => {
+      if (!card.draggable) { e.preventDefault(); return; }
       dragSrc = card; card.classList.add('dragging');
       e.dataTransfer.effectAllowed = 'move';
     });
     card.addEventListener('dragend', () => {
+      card.draggable = false;
       card.classList.remove('dragging');
       list.querySelectorAll('.preset-card').forEach(c => c.classList.remove('drag-over'));
       dragSrc = null;
@@ -1442,8 +1540,21 @@ function enterPhase(idx) {
   phaseIndex = idx;
   const ph = phases[idx];
   timeLeft = ph.duration; totalPhaseTime = ph.duration;
-  document.getElementById('timer-phase-name').textContent = ph.name;
-  document.getElementById('timer-set-badge').textContent = ph.setNum ? `Set ${ph.setNum} of ${activePreset.sets}` : '';
+
+  /* Phase name flash */
+  const nameEl = document.getElementById('timer-phase-name');
+  const badgeEl = document.getElementById('timer-set-badge');
+  const ringWrap = document.querySelector('.timer-ring-wrap');
+  nameEl.classList.remove('phase-flash-in');
+  badgeEl.classList.remove('badge-flash-in');
+  ringWrap.classList.remove('ring-enter');
+  void nameEl.offsetWidth; // reflow
+  nameEl.textContent = ph.name;
+  badgeEl.textContent = ph.setNum ? `Set ${ph.setNum} of ${activePreset.sets}` : '';
+  nameEl.classList.add('phase-flash-in');
+  badgeEl.classList.add('badge-flash-in');
+  ringWrap.classList.add('ring-enter');
+
   document.getElementById('screen-timer').style.background = getPhaseBg()[ph.name] || 'var(--bg)';
   updateTimerRing(); updateTimerDigits(true); renderDots();
   clearInterval(timerInterval); paused = false;
