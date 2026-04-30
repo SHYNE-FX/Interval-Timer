@@ -1036,7 +1036,7 @@
 </div>
 
 
-<!-- ════════════��══════════════════
+<!-- ════════════  ══════════════════
      SCREEN 4 — FINISHED
 ════════════════════════════════ -->
 <div id="screen-finish" class="screen">
@@ -1124,7 +1124,7 @@
 
 <div class="toast" id="toast"></div>
 
-<!-- ═══════════���═══════════════════ JS ════════════════════════════════ -->
+<!-- ═══════════   ═══════════════════ JS ════════════════════════════════ -->
 <script>
 /* ──────────── INLINE SVG ICONS ──────────── */
 const ICON_PAUSE = '<svg class="icon icon-fill" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>';
@@ -1133,9 +1133,19 @@ const ICON_WARN  = '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true" sty
 
 /* ──────────── AUDIO ENGINE ──────────── */
 let audioCtx = null;
+const BEEP_WAV_SRC = 'file:///C:/Users/SHYNE/Code/spendtrak/beep.wav';
+const beepWav = new Audio(BEEP_WAV_SRC);
+beepWav.preload = 'auto';
 function getAudioCtx() {
   if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   return audioCtx;
+}
+function playBeepWav() {
+  try {
+    const cue = beepWav.cloneNode();
+    cue.currentTime = 0;
+    cue.play().catch(() => {});
+  } catch(e) {}
 }
 function playBeep(type = 'short') {
   try {
@@ -1154,10 +1164,10 @@ function playBeep(type = 'short') {
   } catch(e) {}
 }
 function playFinishBeeps() {
-  [0, 0.28, 0.56].forEach(t => setTimeout(() => playBeep('short'), t * 1000));
+  playBeepWav();
 }
 function playWhistle() {
-  [0, 0.18, 0.36].forEach(t => setTimeout(() => playBeep('short'), t * 1000));
+  playBeepWav();
 }
 
 /* ──────────── SPEECH — soothing female voice ──────────── */
@@ -1629,8 +1639,9 @@ function tick() {
       speak(`Getting done set ${cur.setNum} of ${activePreset.sets}`);
   }
 
-  /* 5 s before end → upcoming phase callout */
-  if (timeLeft === 5) {
+  /* 3 s before end → upcoming phase callout + final transition beep */
+  if (timeLeft === 3) {
+    playWhistle();
     const next = phases[phaseIndex + 1];
     if (next) {
       if (next.name === 'WORK')      speak('Get ready to work');
@@ -1638,16 +1649,12 @@ function tick() {
     }
   }
 
-  /* last 3 beeps */
-  if (timeLeft > 0 && timeLeft <= 3) playBeep('short');
-
   if (timeLeft <= 0) {
     const cur = phases[phaseIndex];
     if (cur && cur.name === 'REST' && cur.setNum != null && totalPhaseTime < 9 && !isLastSetPhase())
       speak(`Getting done set ${cur.setNum} of ${activePreset.sets}`);
-    playWhistle();
     updateTimerRing(); updateTimerDigits(true);
-    setTimeout(() => enterPhase(phaseIndex + 1), 700);
+    enterPhase(phaseIndex + 1);
     return;
   }
   updateTimerRing(); updateTimerDigits(true);
