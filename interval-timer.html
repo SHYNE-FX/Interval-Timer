@@ -915,7 +915,7 @@
         <div class="duration-card">
           <div class="duration-card-label">
             <div class="duration-dot" style="background:var(--phase-prepare)"></div>
-            Prepare
+            Get Ready
           </div>
           <div class="duration-stepper">
             <button class="step-btn" data-target="cfg-prepare" data-dir="-1">−</button>
@@ -1008,7 +1008,7 @@
      SCREEN 3 — ACTIVE TIMER
 ════════════════════════════════ -->
 <div id="screen-timer" class="screen">
-  <div class="timer-phase-name" id="timer-phase-name">PREPARE</div>
+  <div class="timer-phase-name" id="timer-phase-name">GET READY</div>
 
   <div class="timer-ring-wrap">
     <div class="timer-svg-wrap">
@@ -1133,7 +1133,7 @@ const ICON_WARN  = '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true" sty
 
 /* ──────────── AUDIO ENGINE ──────────── */
 let audioCtx = null;
-const BEEP_WAV_SRC = 'file:///C:/Users/SHYNE/Code/spendtrak/beep.wav';
+const BEEP_WAV_SRC = './beep.wav';
 const beepWav = new Audio(BEEP_WAV_SRC);
 beepWav.preload = 'auto';
 function getAudioCtx() {
@@ -1352,7 +1352,7 @@ document.querySelector('.num-keypad').addEventListener('click', e => {
   numDisplay.textContent = numModalBuffer;
 });
 
-const STEP_LABELS = { prepare:'Prepare (seconds)', work:'Work (seconds)', rest:'Rest (seconds)', cooldown:'Cooldown (seconds)', sets:'Number of Sets' };
+const STEP_LABELS = { prepare:'Get Ready (seconds)', work:'Work (seconds)', rest:'Rest (seconds)', cooldown:'Cooldown (seconds)', sets:'Number of Sets' };
 document.getElementById('screen-config').addEventListener('click', e => {
   const sv = e.target.closest('.step-val'); if (!sv) return;
   const id = sv.id.replace('cfg-','');
@@ -1597,8 +1597,8 @@ function enterPhase(idx) {
   void nameEl.offsetWidth; // reflow
   if (ph.name === 'PREPARE' && activePreset) {
     const totalTime = fmt(calcTotal(activePreset));
-    nameEl.innerHTML = `PREPARE<br><span style="font-size:0.62em;opacity:0.85;font-weight:600;letter-spacing:0.04em;">${escHtml(activePreset.name)}<br>${activePreset.sets} SETS | ${totalTime}</span>`;
-    speak('Prepare');
+    nameEl.innerHTML = `GET READY<br><span style="font-size:0.62em;opacity:0.85;font-weight:600;letter-spacing:0.04em;">${escHtml(activePreset.name)}<br>${activePreset.sets} SETS | ${totalTime}</span>`;
+    speak('Get ready');
   } else {
     nameEl.textContent = ph.name;
   }
