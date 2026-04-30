@@ -1157,43 +1157,7 @@ function playFinishBeeps() {
   [0, 0.28, 0.56].forEach(t => setTimeout(() => playBeep('short'), t * 1000));
 }
 function playWhistle() {
-  try {
-    const ctx = getAudioCtx();
-    if (ctx.state === 'suspended') ctx.resume();
-    const now = ctx.currentTime;
-
-    /* Main tone — classic pea whistle sits around 2200 Hz */
-    const osc  = ctx.createOscillator();
-    const gain = ctx.createGain();
-
-    /* LFO simulates the pea flutter (~16 Hz warble, ±120 Hz depth) */
-    const lfo      = ctx.createOscillator();
-    const lfoGain  = ctx.createGain();
-    lfo.type = 'sine';
-    lfo.frequency.setValueAtTime(16, now);
-    lfoGain.gain.setValueAtTime(0, now);
-    lfoGain.gain.linearRampToValueAtTime(130, now + 0.04); /* flutter ramps in */
-    lfo.connect(lfoGain);
-    lfoGain.connect(osc.frequency);
-
-    osc.type = 'sine';
-    /* Slight pitch rise at the blow onset, then settle */
-    osc.frequency.setValueAtTime(2050, now);
-    osc.frequency.linearRampToValueAtTime(2250, now + 0.06);
-    osc.frequency.setValueAtTime(2200, now + 0.06);
-
-    /* Amplitude: sharp attack, sustain, tail off */
-    gain.gain.setValueAtTime(0, now);
-    gain.gain.linearRampToValueAtTime(0.48, now + 0.02);
-    gain.gain.setValueAtTime(0.45, now + 0.45);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.65);
-
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-
-    lfo.start(now);  lfo.stop(now + 0.65);
-    osc.start(now);  osc.stop(now + 0.65);
-  } catch(e) {}
+  [0, 0.18, 0.36].forEach(t => setTimeout(() => playBeep('short'), t * 1000));
 }
 
 /* ──────────── SPEECH — soothing female voice ──────────── */
