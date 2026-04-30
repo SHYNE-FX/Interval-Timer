@@ -1156,18 +1156,67 @@ function playBeep(type = 'short') {
 function playFinishBeeps() {
   [0, 0.28, 0.56].forEach(t => setTimeout(() => playBeep('short'), t * 1000));
 }
+function playWhistle() {
+  try {
+    const ctx = getAudioCtx();
+    if (ctx.state === 'suspended') ctx.resume();
+    const osc = ctx.createOscillator(), gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    const now = ctx.currentTime;
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(1400, now);
+    osc.frequency.linearRampToValueAtTime(1900, now + 0.12);
+    osc.frequency.linearRampToValueAtTime(1600, now + 0.45);
+    gain.gain.setValueAtTime(0.5, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.48);
+    osc.start(now); osc.stop(now + 0.5);
+  } catch(e) {}
+}
 
-/* ──────────── [F] SPEECH — slowed rate ──────────── */
+/* ──────────── SPEECH — soothing female voice ──────────── */
+/* Preferred female voices ordered by quality/naturalness */
+const FEMALE_VOICE_NAMES = [
+  'Samantha','Karen','Moira','Tessa','Fiona','Victoria','Allison',
+  'Ava','Susan','Zira','Google US English','Microsoft Zira',
+  'Microsoft Aria','Google UK English Female'
+];
+let _selectedVoice = null;
+
+function pickFemaleVoice() {
+  const voices = window.speechSynthesis.getVoices();
+  if (!voices.length) return null;
+  /* 1. Exact name match from preference list */
+  for (const name of FEMALE_VOICE_NAMES) {
+    const v = voices.find(v => v.name === name);
+    if (v) return v;
+  }
+  /* 2. Partial name match */
+  for (const name of FEMALE_VOICE_NAMES) {
+    const v = voices.find(v => v.name.includes(name));
+    if (v) return v;
+  }
+  /* 3. Any en-US/en-GB voice whose name hints female */
+  const femaleHints = /female|woman|girl|zira|aria|ava|samantha|karen/i;
+  const v = voices.find(v => /^en/i.test(v.lang) && femaleHints.test(v.name));
+  if (v) return v;
+  /* 4. Fallback: first English voice */
+  return voices.find(v => /^en/i.test(v.lang)) || voices[0] || null;
+}
+
 function speak(text) {
   try {
     if (!('speechSynthesis' in window)) return;
+    if (!_selectedVoice) _selectedVoice = pickFemaleVoice();
     const u = new SpeechSynthesisUtterance(text);
-    u.rate = 0.82;  /* [F] slowed from 1.05 */
-    u.pitch = 1.0; u.volume = 1.0; u.lang = 'en-US';
+    if (_selectedVoice) u.voice = _selectedVoice;
+    u.rate = 0.80; u.pitch = 1.1; u.volume = 1.0; u.lang = 'en-US';
     window.speechSynthesis.cancel();
     window.speechSynthesis.speak(u);
   } catch(e) {}
 }
+
+/* Voices load async — cache on ready */
+window.speechSynthesis.onvoiceschanged = () => { _selectedVoice = pickFemaleVoice(); };
 
 /* ──────────── SETTINGS ──────────── */
 const SETTINGS_KEY = 'interval_settings_v1';
@@ -1549,7 +1598,13 @@ function enterPhase(idx) {
   badgeEl.classList.remove('badge-flash-in');
   ringWrap.classList.remove('ring-enter');
   void nameEl.offsetWidth; // reflow
-  nameEl.textContent = ph.name;
+  if (ph.name === 'PREPARE' && activePreset) {
+    const totalTime = fmt(calcTotal(activePreset));
+    nameEl.innerHTML = `PREPARE,<br><span style="font-size:0.62em;opacity:0.85;font-weight:600;letter-spacing:0.04em;">${escHtml(activePreset.name)},<br>${activePreset.sets} SETS, ${totalTime}</span>`;
+    speak('Prepare');
+  } else {
+    nameEl.textContent = ph.name;
+  }
   badgeEl.textContent = ph.setNum ? `Set ${ph.setNum} of ${activePreset.sets}` : '';
   nameEl.classList.add('phase-flash-in');
   badgeEl.classList.add('badge-flash-in');
@@ -1580,11 +1635,11 @@ function tick() {
     speak(`Set ${activePreset.sets} of ${activePreset.sets} complete`);
   }
 
-  /* 9 s before REST end → "Set X of Y done" (not last set) */
+  /* 9 s before REST end → "Getting done set X of Y" (not last set) */
   if (timeLeft === 9) {
     const cur = phases[phaseIndex];
     if (cur && cur.name === 'REST' && cur.setNum != null && !isLastSetPhase())
-      speak(`Set ${cur.setNum} of ${activePreset.sets} done`);
+      speak(`Getting done set ${cur.setNum} of ${activePreset.sets}`);
   }
 
   /* 5 s before end → upcoming phase callout */
@@ -1602,9 +1657,8 @@ function tick() {
   if (timeLeft <= 0) {
     const cur = phases[phaseIndex];
     if (cur && cur.name === 'REST' && cur.setNum != null && totalPhaseTime < 9 && !isLastSetPhase())
-      speak(`Set ${cur.setNum} of ${activePreset.sets} done`);
-    playBeep('long');
-    clearInterval(timerInterval);
+      speak(`Getting done set ${cur.setNum} of ${activePreset.sets}`);
+    playWhistle();
     updateTimerRing(); updateTimerDigits(true);
     setTimeout(() => enterPhase(phaseIndex + 1), 700);
     return;
@@ -1712,7 +1766,7 @@ document.getElementById('btn-timer-pause').addEventListener('click', () => {
 });
 document.getElementById('btn-timer-stop').addEventListener('click', () => { clearInterval(timerInterval); releaseWakeLock(); showScreen('screen-dash'); });
 document.getElementById('btn-timer-skip').addEventListener('click', () => {
-  if (!phases.length) return; clearInterval(timerInterval); playBeep('long');
+  if (!phases.length) return; clearInterval(timerInterval); playWhistle();
   setTimeout(() => enterPhase(phaseIndex + 1), 200);
 });
 document.getElementById('btn-timer-reset').addEventListener('click', () => {
