@@ -876,7 +876,7 @@
 <div id="screen-dash" class="screen active">
   <div class="topbar">
     <div class="topbar-logo"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>X <span>- TIMER</span></div>
-    <button class="icon-btn">v2.7</button>
+    <button class="icon-btn">v2.12</button>
     <button class="icon-btn" id="btn-open-settings" title="Settings" aria-label="Settings"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
   </div>
 
@@ -1135,7 +1135,7 @@ const ICON_WARN  = '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true" sty
 
 /* ──────────── AUDIO ENGINE ──────────── */
 let audioCtx = null;
-const BEEP_WAV_SRC = './beep.wav';
+const BEEP_WAV_SRC = './beep3whistle.wav';
 const beepWav = new Audio(BEEP_WAV_SRC);
 beepWav.preload = 'auto';
 function getAudioCtx() {
@@ -1148,6 +1148,22 @@ function playBeepWav() {
     cue.currentTime = 0;
     cue.play().catch(() => {});
   } catch(e) {}
+}
+function playBeepWavAsync() {
+  return new Promise(resolve => {
+    try {
+      const cue = beepWav.cloneNode();
+      let settled = false;
+      const done = () => { if (!settled) { settled = true; resolve(); } };
+      cue.currentTime = 0;
+      cue.onended = done;
+      cue.onerror = done;
+      cue.play().then(() => {
+        const fallback = Number.isFinite(cue.duration) && cue.duration > 0 ? (cue.duration * 1000 + 120) : 500;
+        setTimeout(done, fallback);
+      }).catch(done);
+    } catch(e) { resolve(); }
+  });
 }
 function playBeep(type = 'short') {
   try {
@@ -1170,6 +1186,10 @@ function playFinishBeeps() {
 }
 function playWhistle() {
   playBeepWav();
+}
+
+function waitMs(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 /* ──────────── SPEECH — soothing female voice ──────────── */
@@ -1212,6 +1232,23 @@ function speak(text) {
     window.speechSynthesis.cancel();
     window.speechSynthesis.speak(u);
   } catch(e) {}
+}
+function speakAsync(text) {
+  return new Promise(resolve => {
+    try {
+      if (!('speechSynthesis' in window)) { resolve(); return; }
+      if (!_selectedVoice) _selectedVoice = pickFemaleVoice();
+      const u = new SpeechSynthesisUtterance(text);
+      if (_selectedVoice) u.voice = _selectedVoice;
+      u.rate = 0.80; u.pitch = 1.1; u.volume = 1.0; u.lang = 'en-US';
+      let settled = false;
+      const done = () => { if (!settled) { settled = true; resolve(); } };
+      u.onend = done;
+      u.onerror = done;
+      window.speechSynthesis.speak(u);
+      setTimeout(done, 8000);
+    } catch(e) { resolve(); }
+  });
 }
 
 /* Voices load async — cache on ready */
@@ -1286,6 +1323,42 @@ let presets = loadPresets();
 let editingId = null, activePreset = null, phases = [];
 let phaseIndex = 0, timeLeft = 0, totalPhaseTime = 0;
 let timerInterval = null, paused = false, wakeLock = null;
+let timerSessionToken = 0;
+let audioFlowQueue = Promise.resolve();
+let phaseCueState = { preEndDone:false };
+
+function resetAudioFlow() {
+  timerSessionToken++;
+  audioFlowQueue = Promise.resolve();
+  try { if ('speechSynthesis' in window) window.speechSynthesis.cancel(); } catch(e) {}
+}
+function queueAudioTask(task, token = timerSessionToken) {
+  audioFlowQueue = audioFlowQueue
+    .then(async () => { if (token !== timerSessionToken) return; await task(); })
+    .catch(() => {});
+  return audioFlowQueue;
+}
+function queueSpeech(text, token = timerSessionToken) {
+  return queueAudioTask(() => speakAsync(text), token);
+}
+function queueTripleBeepWhistle(token = timerSessionToken) {
+  return queueAudioTask(async () => {
+    await playBeepWavAsync();
+  }, token);
+}
+function queueStartSetCue(setNum, token = timerSessionToken) {
+  queueSpeech(`Get ready for set ${setNum} of ${activePreset.sets}`, token);
+}
+function queueTransitionToRest(token = timerSessionToken) {
+  /* Whistle now handled in tick() for exact timing */
+}
+function queueCompleteSet(setNum, token = timerSessionToken) {
+  queueSpeech(`Completing set ${setNum} of ${activePreset.sets}`, token);
+}
+function queueFinalWrapUp(token = timerSessionToken) {
+  queueSpeech(`Total sets ${activePreset.sets} of ${activePreset.sets} completed`, token);
+  queueSpeech('Cool down', token);
+}
 
 /* ──────────── UTILS ──────────── */
 function uid() { return 'p' + Date.now().toString(36) + Math.floor(Math.random()*999); }
@@ -1578,7 +1651,10 @@ function buildPhases(p) {
 /* ──────────── TIMER ENGINE ──────────── */
 function startTimer(id) {
   const p = presets.find(x => x.id===id); if (!p) return;
+  resetAudioFlow();
   activePreset = p; phases = buildPhases(p); phaseIndex = 0;
+  queueSpeech(`Total sets ${p.sets} of ${p.sets}`, timerSessionToken);
+  queueStartSetCue(1, timerSessionToken);
   enterPhase(0); showScreen('screen-timer'); acquireWakeLock();
 }
 
@@ -1588,6 +1664,8 @@ function enterPhase(idx) {
   phaseIndex = idx;
   const ph = phases[idx];
   timeLeft = ph.duration; totalPhaseTime = ph.duration;
+  phaseCueState = { preEndDone:false };
+  const token = timerSessionToken;
 
   /* Phase name flash */
   const nameEl = document.getElementById('timer-phase-name');
@@ -1600,10 +1678,12 @@ function enterPhase(idx) {
   if (ph.name === 'PREPARE' && activePreset) {
     const totalTime = fmt(calcTotal(activePreset));
     nameEl.innerHTML = `GET READY<br><span style="font-size:0.62em;opacity:0.85;font-weight:600;letter-spacing:0.04em;">${escHtml(activePreset.name)}<br>${activePreset.sets} SETS | ${totalTime}</span>`;
-    speak('Get ready');
   } else {
     nameEl.textContent = ph.name;
   }
+  if (ph.name === 'WORK') queueSpeech('Work', token);
+  else if (ph.name === 'REST') queueSpeech('Rest', token);
+  else if (ph.name === 'COOLDOWN') queueSpeech('Cool down', token);
   badgeEl.textContent = ph.setNum ? `Set ${ph.setNum} of ${activePreset.sets}` : '';
   nameEl.classList.add('phase-flash-in');
   badgeEl.classList.add('badge-flash-in');
@@ -1616,45 +1696,33 @@ function enterPhase(idx) {
   timerInterval = setInterval(tick, 1000);
 }
 
-/* [D] Is the current phase the last one tied to a set? */
-function isLastSetPhase() {
-  if (phases[phaseIndex].setNum == null) return false;
-  for (let i = phaseIndex + 1; i < phases.length; i++) {
-    if (phases[i].setNum != null) return false;
-  }
-  return true;
-}
-
 function tick() {
   if (paused) return;
   timeLeft--;
+  const cur = phases[phaseIndex];
+  const next = phases[phaseIndex + 1];
+  const token = timerSessionToken;
 
-  /* [D] 2 s before end of last set phase → "Set X/X complete" */
-  if (timeLeft === 2 && isLastSetPhase()) {
-    speak(`Set ${activePreset.sets} of ${activePreset.sets} complete`);
-  }
+  if (!phaseCueState.preEndDone && timeLeft <= 3) {
+    playBeepWav(); // Start the 3-beep-whistle immediately at 3s
+    phaseCueState.preEndDone = true;
 
-  /* 9 s before REST end → "Getting done set X of Y" (not last set) */
-  if (timeLeft === 9) {
-    const cur = phases[phaseIndex];
-    if (cur && cur.name === 'REST' && cur.setNum != null && !isLastSetPhase())
-      speak(`Getting done set ${cur.setNum} of ${activePreset.sets}`);
-  }
-
-  /* 3 s before end → upcoming phase callout + final transition beep */
-  if (timeLeft === 3) {
-    playWhistle();
-    const next = phases[phaseIndex + 1];
-    if (next) {
-      if (next.name === 'WORK')      speak('Get ready to work');
-      else if (next.name === 'REST') speak('Get ready to rest');
+    if (cur && cur.name === 'REST' && cur.setNum != null) {
+      queueCompleteSet(cur.setNum, token);
+      if (next && next.name === 'WORK' && next.setNum != null) {
+        queueStartSetCue(next.setNum, token);
+      } else if (!next) {
+        queueFinalWrapUp(token);
+      }
+    } else if (cur && cur.name === 'WORK' && next && next.name === 'REST') {
+      queueTransitionToRest(token);
+    } else if (!next) {
+      // Last phase transition (to finish)
+      queueFinalWrapUp(token);
     }
   }
 
   if (timeLeft <= 0) {
-    const cur = phases[phaseIndex];
-    if (cur && cur.name === 'REST' && cur.setNum != null && totalPhaseTime < 9 && !isLastSetPhase())
-      speak(`Getting done set ${cur.setNum} of ${activePreset.sets}`);
     updateTimerRing(); updateTimerDigits(true);
     enterPhase(phaseIndex + 1);
     return;
@@ -1749,7 +1817,8 @@ function renderDots() {
   }).join('');
 }
 function finishTimer() {
-  clearInterval(timerInterval); releaseWakeLock(); playFinishBeeps();
+  resetAudioFlow();
+  clearInterval(timerInterval); releaseWakeLock();
   document.getElementById('finish-sub').textContent = `${activePreset.name} · ${activePreset.sets} sets complete`;
   showScreen('screen-finish');
 }
@@ -1760,16 +1829,25 @@ document.getElementById('btn-timer-pause').addEventListener('click', () => {
   paused = !paused;
   document.getElementById('btn-timer-pause').innerHTML = paused ? ICON_PLAY : ICON_PAUSE;
 });
-document.getElementById('btn-timer-stop').addEventListener('click', () => { clearInterval(timerInterval); releaseWakeLock(); showScreen('screen-dash'); });
+document.getElementById('btn-timer-stop').addEventListener('click', () => {
+  resetAudioFlow();
+  clearInterval(timerInterval); releaseWakeLock(); showScreen('screen-dash');
+});
 document.getElementById('btn-timer-skip').addEventListener('click', () => {
-  if (!phases.length) return; clearInterval(timerInterval); playWhistle();
+  if (!phases.length) return;
+  resetAudioFlow();
+  clearInterval(timerInterval); playWhistle();
   setTimeout(() => enterPhase(phaseIndex + 1), 200);
 });
 document.getElementById('btn-timer-reset').addEventListener('click', () => {
-  if (!phases.length) return; clearInterval(timerInterval); enterPhase(phaseIndex); showToast('Phase reset');
+  if (!phases.length) return;
+  resetAudioFlow();
+  clearInterval(timerInterval); enterPhase(phaseIndex); showToast('Phase reset');
 });
 document.getElementById('btn-timer-rewind').addEventListener('click', () => {
-  if (!phases.length) return; clearInterval(timerInterval); enterPhase(Math.max(0, phaseIndex - 1));
+  if (!phases.length) return;
+  resetAudioFlow();
+  clearInterval(timerInterval); enterPhase(Math.max(0, phaseIndex - 1));
 });
 
 /* ──────────── FINISH ──────────── */
